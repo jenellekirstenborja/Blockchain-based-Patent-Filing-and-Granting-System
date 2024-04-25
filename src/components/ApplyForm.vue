@@ -19,7 +19,7 @@
       </b-navbar>
     </div>
     <p class="account-text" v-if="account">Account Address: {{ account }}</p>
-    <p class="bxv"> {{ pendingList }}</p>
+    
     <b-button v-b-modal.modal-prevent-closing >Apply</b-button>
     
     <!-- Patent Application Form -->
@@ -90,6 +90,8 @@
       </form>
     </b-modal>
 
+    <b-table striped hover :items="pendingList" :fields="fields"></b-table>
+
 
   <!-- Table for Viewing Patent Applications -->
   <!-- <div class="p-2">
@@ -156,8 +158,11 @@ export default {
       title: '',
       titleState: null,
 
-      table: null,
+      
       pendingList: [],
+
+      fields: ['ipcClassification', 'applicant', 'inventor', 'title'],
+      
       
 
   };
