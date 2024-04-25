@@ -248,8 +248,10 @@ beforeMount() {
         const accounts = await this.provider.send("eth_requestAccounts", []);
         this.account = accounts[0];
         await this.createContractInstance(); 
-        await this.getAllPendingLists();// wait for contract instance creation
+        
+        await this.getAllPendingLists();
         await this.getRole();
+        
          // fetch role after contract instance is created
       } else {
         console.error("Metamask is not installed");
@@ -275,7 +277,8 @@ beforeMount() {
         }
         this.pendingList.push(_patent)
         console.log(this.pendingList);
-      }}
+      }
+    },
 
     
 
@@ -285,7 +288,7 @@ beforeMount() {
       
 
 
-    },
+    
 
     async getRole() {
       try {
@@ -305,6 +308,7 @@ beforeMount() {
         console.error("Error getting role:", error);
       }
     },
+  }
   
 };
 
