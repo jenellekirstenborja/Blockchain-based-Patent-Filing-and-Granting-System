@@ -7,7 +7,7 @@
         </b-navbar-brand>
         <b-navbar-nav class="ml-auto">
           <b-navbar-nav>
-            <b-nav-item href="#" disable v-if="role === 1">
+            <b-nav-item href="#" disabled v-if="role === 1">
               <p class="admin-text">Admin</p>
             </b-nav-item>
 
@@ -19,33 +19,114 @@
       </b-navbar>
     </div>
     <p class="account-text" v-if="account">Account Address: {{ account }}</p>
-    <b-button v-b-modal.modal-prevent-closing>Open Modal</b-button>
+    <b-button v-b-modal.modal-prevent-closing >Apply</b-button>
     
-    
+    <!-- Patent Application Form -->
+    <b-modal
+      id="modal-prevent-closing"
+      ref="modal"
+      title="Patent Application Form"
+      @show="resetModal"
+      @hidden="resetModal"
+      @ok="handleOk"
+    >
+      <form ref="form" @submit.stop.prevent="handleSubmit">
+        <b-form-group
+          label="IPC Classification"
+          label-for="ipc_classification"
+          invalid-feedback="IPC Classification is required"
+          :state="ipcClassificationState"
+        >
+          <b-form-input
+            id="ipc_classification"
+            v-model="ipcClassification"
+            :state="ipcClassificationState"
+            required
+          ></b-form-input>
+        </b-form-group>
 
+        <b-form-group
+          label="Applicant"
+          label-for="applicant"
+          invalid-feedback="Applicant is required"
+          :state="applicantState"
+        >
+          <b-form-input
+            id="applicant"
+            v-model="applicant"
+            :state="applicantState"
+            required
+          ></b-form-input>
+        </b-form-group>
 
+        <b-form-group
+          label="Inventor"
+          label-for="inventor"
+          invalid-feedback="Inventor is required"
+          :state="inventorState"
+        >
+          <b-form-input
+            id="inventor"
+            v-model="inventor"
+            :state="inventorState"
+            required
+          ></b-form-input>
+        </b-form-group>
 
-</div>
-</template>
-
-
-
-    <b-modal v-model="showModal" title="Apply Form">
-      <form @submit.prevent="submitForm">
-        <label>IPC Classification</label>
-        <input type="text" v-model="IPC_classification" required />
-        <label>Applicant</label>
-        <input type="text" v-model="applicant" required />
-        <label>Inventor</label>
-        <input type="text" v-model="inventor" required />
-        <label>Title</label>
-        <input type="text" v-model="title" required />
-
-        <div class="submit">
-          <button type="submit" class="submit-button">Submit</button>
-        </div>
+        <b-form-group
+          label="Title"
+          label-for="title"
+          invalid-feedback="Title is required"
+          :state="titleState"
+        >
+          <b-form-input
+            id="title"
+            v-model="title"
+            :state="titleState"
+            required
+          ></b-form-input>
+        </b-form-group>
       </form>
     </b-modal>
+
+
+  <!-- Table for Viewing Patent Applications -->
+  <!-- <div class="p-2">
+      <table>
+        <thead>
+          <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+            <th v-for="header in headerGroup.headers" :key="header.id" :colSpan="header.colSpan">
+              <FlexRender
+                v-if="!header.isPlaceholder"
+                :render="header.column.columnDef.header"
+                :props="header.getContext()"
+              />
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in table.getRowModel().rows" :key="row.id">
+            <td v-for="cell in row.getVisibleCells()" :key="cell.id">
+              <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr v-for="footerGroup in table.getFooterGroups()" :key="footerGroup.id">
+            <th v-for="header in footerGroup.headers" :key="header.id" :colSpan="header.colSpan">
+              <FlexRender
+                v-if="!header.isPlaceholder"
+                :render="header.column.columnDef.footer"
+                :props="header.getContext()"
+              />
+            </th>
+          </tr>
+        </tfoot>
+      </table>
+    </div> -->
+    </div>
+  
+</template>
 
 
 
@@ -61,18 +142,69 @@ export default {
       provider: null,
       account: null,
       contract: null,
-      IPC_classification: "",
-      applicant: "",
-      inventor: "",
-      title: "",
       role: null,
-      showModal: false,
-    };
-  },
-  beforeMount() {
+
+      ipcClassification: '',
+      ipcClassificationState: null,
+      applicant: '',
+      applicantState: null,
+      inventor: '',
+      inventorState: null,
+      title: '',
+      titleState: null,
+
+      table: null
+      
+
+  };
+},
+beforeMount() {
     this.connectWallet();
   },
   methods: {
+
+    checkFormValidity() {
+      const valid = this.$refs.form.checkValidity()
+      this.ipcClassificationState = valid
+      this.applicantState = valid
+      this.inventorState = valid
+      this.titleState = valid
+      return valid
+    },
+    resetModal() {
+      this.ipcClassification = ''
+      this.ipcClassificationState = null
+      this.applicant = ''
+      this.applicantState = null
+      this.inventor = ''
+      this.inventorState = null
+      this.title = ''
+      this.titleState = null
+    },
+    handleOk(bvModalEvent) {
+      // Prevent modal from closing
+      bvModalEvent.preventDefault()
+      // Trigger submit handler
+      this.handleSubmit()
+    },
+    handleSubmit() {
+      // Exit when the form isn't valid
+      if (!this.checkFormValidity()) {
+        return
+      }
+      // Submit the form data (you can add your logic here)
+      console.log('IPC Classification:', this.ipcClassification)
+      console.log('Applicant:', this.applicant)
+      console.log('Inventor:', this.inventor)
+      console.log('Title:', this.title)
+      // Hide the modal manually
+      this.$nextTick(() => {
+        this.$bvModal.hide('modal-prevent-closing')
+      })
+    },
+  
+
+
     async connectWallet() {
       if (window.ethereum) {
         this.provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -85,24 +217,11 @@ export default {
       }
     },
     async createContractInstance() {
-      var contractAddress = "0x01354782D4Eb47250eA816f9d0587dCcfcAE2A1E";
+      var contractAddress = "0x9D6b7f231915145682A3b74112fb52e8380e87D8";
       this.contract = new ethers.Contract(contractAddress, contractAbi);
       this.contract = this.contract.connect(this.provider);
     },
-    async submitForm() {
-      try {
-        const tx = await this.contract.applyForPatent(
-          this.IPC_classification,
-          this.applicant,
-          this.inventor,
-          this.title
-        );
-        await tx.wait();
-        console.log("Transaction mined:", tx.hash);
-      } catch (error) {
-        console.error("Error submitting form:", error);
-      }
-    },
+
     async getRole() {
       try {
         // Get the signer
@@ -123,13 +242,18 @@ export default {
     },
   },
 };
+
 </script>
 
 <style>
-#app {
-}
-.container {
-}
+/* .apply-text {
+  font-size: 
+  letter-spacing: 1.5px;
+  font-weight: bold;
+  color: #ab9a91;
+  text-transform: uppercase;
+
+} */
 .header {
   font-size: 1em;
   text-transform: uppercase;
@@ -194,6 +318,27 @@ input {
   text-align: center;
 }
 
+table {
+  border: 1px solid lightgray;
+}
+
+tbody {
+  border-bottom: 1px solid lightgray;
+}
+
+th {
+  border-bottom: 1px solid lightgray;
+  border-right: 1px solid lightgray;
+  padding: 2px 4px;
+}
+
+tfoot {
+  color: gray;
+}
+
+tfoot th {
+  font-weight: normal;
+}
 
 
 </style>

@@ -19,6 +19,7 @@
       </b-navbar>
     </div>
     <p class="account-text" v-if="account">Account Address: {{ account }}</p>
+    <p class="bxv"> {{ pendingList }}</p>
     <b-button v-b-modal.modal-prevent-closing >Apply</b-button>
     
     <!-- Patent Application Form -->
@@ -88,11 +89,51 @@
         </b-form-group>
       </form>
     </b-modal>
-  </div>
+
+
+  <!-- Table for Viewing Patent Applications -->
+  <!-- <div class="p-2">
+      <table>
+        <thead>
+          <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+            <th v-for="header in headerGroup.headers" :key="header.id" :colSpan="header.colSpan">
+              <FlexRender
+                v-if="!header.isPlaceholder"
+                :render="header.column.columnDef.header"
+                :props="header.getContext()"
+              />
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in table.getRowModel().rows" :key="row.id">
+            <td v-for="cell in row.getVisibleCells()" :key="cell.id">
+              <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr v-for="footerGroup in table.getFooterGroups()" :key="footerGroup.id">
+            <th v-for="header in footerGroup.headers" :key="header.id" :colSpan="header.colSpan">
+              <FlexRender
+                v-if="!header.isPlaceholder"
+                :render="header.column.columnDef.footer"
+                :props="header.getContext()"
+              />
+            </th>
+          </tr>
+        </tfoot>
+      </table>
+    </div> -->
+    </div>
+  
 </template>
 
 
+
 <script>
+
+
 import { ethers } from "ethers";
 
 import contractAbi from "../contracts-abi/ip.json";
@@ -114,6 +155,9 @@ export default {
       inventorState: null,
       title: '',
       titleState: null,
+
+      table: null,
+      pendingList: [],
       
 
   };
@@ -147,21 +191,54 @@ beforeMount() {
       // Trigger submit handler
       this.handleSubmit()
     },
-    handleSubmit() {
-      // Exit when the form isn't valid
-      if (!this.checkFormValidity()) {
-        return
-      }
-      // Submit the form data (you can add your logic here)
-      console.log('IPC Classification:', this.ipcClassification)
-      console.log('Applicant:', this.applicant)
-      console.log('Inventor:', this.inventor)
-      console.log('Title:', this.title)
-      // Hide the modal manually
-      this.$nextTick(() => {
-        this.$bvModal.hide('modal-prevent-closing')
-      })
-    },
+    // handleSubmit() {
+    //   // Exit when the form isn't valid
+    //   if (!this.checkFormValidity()) {
+    //     return
+    //   }
+    //   // Submit the form data (you can add your logic here)
+    //   console.log('IPC Classification:', this.ipcClassification)
+    //   console.log('Applicant:', this.applicant)
+    //   console.log('Inventor:', this.inventor)
+    //   console.log('Title:', this.title)
+    //   // Hide the modal manually
+    //   this.$nextTick(() => {
+    //     this.$bvModal.hide('modal-prevent-closing')
+    //   })
+    async handleSubmit() {
+  // Exit when the form isn't valid
+  if (!this.checkFormValidity()) {
+    return;
+  }
+
+  try {
+    // Connect the contract with the signer
+    var signer = this.provider.getSigner(); // signer - user's ethereum address
+    var contractWithSigner = await this.contract.connect(signer);
+    
+
+    // Call the applyForPatent function on the smart contract
+    var apply = await contractWithSigner.applyForPatent(
+      this.ipcClassification,
+      this.applicant,
+      this.inventor,
+      this.title
+    );
+
+    // Transaction successful, log the details
+    console.log(apply, 'Transaction successful');
+    
+    // Hide the modal manually
+    this.$nextTick(() => {
+      this.$bvModal.hide('modal-prevent-closing');
+    });
+  } catch (error) {
+    // Log and handle errors
+    console.error('Error submitting patent application:', error);
+    // Optionally, you can display an error message to the user
+  }
+},
+
   
 
 
@@ -170,31 +247,46 @@ beforeMount() {
         this.provider = new ethers.providers.Web3Provider(window.ethereum);
         const accounts = await this.provider.send("eth_requestAccounts", []);
         this.account = accounts[0];
-        await this.createContractInstance(); // wait for contract instance creation
-        await this.getRole(); // fetch role after contract instance is created
+        await this.createContractInstance(); 
+        await this.getAllPendingLists();// wait for contract instance creation
+        await this.getRole();
+         // fetch role after contract instance is created
       } else {
         console.error("Metamask is not installed");
       }
     },
     async createContractInstance() {
-      var contractAddress = "0x9D6b7f231915145682A3b74112fb52e8380e87D8";
+      var contractAddress = "0x57b1281678D6A75C00275D181A4d4ab79DA76d48";
       this.contract = new ethers.Contract(contractAddress, contractAbi);
       this.contract = this.contract.connect(this.provider);
     },
-    // async submitForm() {
-    //   try {
-    //     const tx = await this.contract.applyForPatent(
-    //       this.IPC_classification,
-    //       this.applicant,
-    //       this.inventor,
-    //       this.title
-    //     );
-    //     await tx.wait();
-    //     console.log("Transaction mined:", tx.hash);
-    //   } catch (error) {
-    //     console.error("Error submitting form:", error);
-    //   }
-    // },
+    async getAllPendingLists() {
+      this.appliedPatentsLength = await this.contract.getAllAppliedPatents();
+      this.pendingList =[];
+      for (let i = 0; i < this.appliedPatentsLength; i++) {
+        var patent = await this.contract.appliedPatents(i)
+        var _patent = {
+          ipcClassification: patent.IPC_Classification,
+      applicant: patent.applicant,
+      inventor: patent.inventors,
+      title: patent.title,
+          
+
+        }
+        this.pendingList.push(_patent)
+        console.log(this.pendingList);
+      }}
+
+    
+
+        // Connect the contract with the signer
+        
+        
+      
+
+
+    },
+
     async getRole() {
       try {
         // Get the signer
@@ -213,7 +305,7 @@ beforeMount() {
         console.error("Error getting role:", error);
       }
     },
-  },
+  
 };
 
 </script>
@@ -290,5 +382,28 @@ input {
 .submit {
   text-align: center;
 }
+
+table {
+  border: 1px solid lightgray;
+}
+
+tbody {
+  border-bottom: 1px solid lightgray;
+}
+
+th {
+  border-bottom: 1px solid lightgray;
+  border-right: 1px solid lightgray;
+  padding: 2px 4px;
+}
+
+tfoot {
+  color: gray;
+}
+
+tfoot th {
+  font-weight: normal;
+}
+
 
 </style>
