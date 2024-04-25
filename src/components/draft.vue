@@ -1,125 +1,162 @@
 <template>
-  <div>
-  <!-- <div>
+  <div id="app">
     <div class="container">
       <b-navbar toggleable="lg" type="" variant="" class="p-0">
         <b-navbar-brand class="text-dark" href="#">
-          Intellectual Property Filing and Granting System</b-navbar-brand>
+          <p class="header">Intellectual Property Filing and Granting System</p>
+        </b-navbar-brand>
         <b-navbar-nav class="ml-auto">
           <b-navbar-nav>
-            <b-nav-item href="#" disabled v-if="role === 1">
-              <p style="color: black !important">Admin</p>
+            <b-nav-item href="#" disable v-if="role === 1">
+              <p class="admin-text">Admin</p>
             </b-nav-item>
-            <b-nav-item href="#" disabled v-else-if="role === 2">
-              <p style="color: #3f704d !important">User</p>
-            </b-nav-item>
-            <b-nav-item href="#" v-else>
-              <p>Loading...</p>
+
+            <b-nav-item href="#" disabled v-else>
+              <p class="user-text">User</p>
             </b-nav-item>
           </b-navbar-nav>
         </b-navbar-nav>
       </b-navbar>
-    </div> -->
+    </div>
+    <p class="account-text" v-if="account">Account Address: {{ account }}</p>
+    <b-button v-b-modal.modal-prevent-closing>Open Modal</b-button>
+    
+    
 
-    <!-- <form @submit.prevent="submitForm">  -->
-    <form>
-      <label> IPC Classification</label>
-      <input type="text" v-model="IPC_classification" required />
-      <label> Applicant</label>
-      <input type="text" v-model="applicant" required />
-      <label> Inventor</label>
-      <input type="text" v-model="inventor" required />
-      <label> Title </label>
-      <input type="text" v-model="title" required />
 
-      <div class="submit">
-        <button type="submit">Submit</button>
-      </div>
-    </form>
-  </div>
+
+</div>
 </template>
 
-<script>
 
+
+    <b-modal v-model="showModal" title="Apply Form">
+      <form @submit.prevent="submitForm">
+        <label>IPC Classification</label>
+        <input type="text" v-model="IPC_classification" required />
+        <label>Applicant</label>
+        <input type="text" v-model="applicant" required />
+        <label>Inventor</label>
+        <input type="text" v-model="inventor" required />
+        <label>Title</label>
+        <input type="text" v-model="title" required />
+
+        <div class="submit">
+          <button type="submit" class="submit-button">Submit</button>
+        </div>
+      </form>
+    </b-modal>
+
+
+
+<script>
 import { ethers } from "ethers";
+
 import contractAbi from "../contracts-abi/ip.json";
 
 export default {
+  name: "ApplyForm",
   data() {
     return {
       provider: null,
-      role: null,
+      account: null,
+      contract: null,
       IPC_classification: "",
       applicant: "",
       inventor: "",
       title: "",
-      applicationNumber: "",
+      role: null,
+      showModal: false,
     };
   },
+  beforeMount() {
+    this.connectWallet();
+  },
   methods: {
-    // async getRole() {
-    //   var signer = this.provider.getSigner()
-    //   var contractWithSigner = await this.contract.connect(signer)
-    //   const role = await contractWithSigner.getRole(await signer.getAddress());
-    //   this.role = parseInt(role)
-    // },
     async connectWallet() {
-      this.provider = new ethers.providers.Web3Provider(window.ethereum)
-      this.accounts = await this.provider.send('eth_requestAccounts', [])
-      this.createContractInstance()
-      this.getElectionStatus()
-      this.getCandidates()
-      this.getRole()
+      if (window.ethereum) {
+        this.provider = new ethers.providers.Web3Provider(window.ethereum);
+        const accounts = await this.provider.send("eth_requestAccounts", []);
+        this.account = accounts[0];
+        await this.createContractInstance(); // wait for contract instance creation
+        await this.getRole(); // fetch role after contract instance is created
+      } else {
+        console.error("Metamask is not installed");
+      }
     },
-    // Function that creates contract instance
     async createContractInstance() {
-      var contractAddress = '0xfCb7cAD6c116fB0cfC443F3b975e73595896A2B1'
-      this.contract = new ethers.Contract(contractAddress, contractAbi)
-      this.contract = this.contract.connect(this.provider)
-
+      var contractAddress = "0x01354782D4Eb47250eA816f9d0587dCcfcAE2A1E";
+      this.contract = new ethers.Contract(contractAddress, contractAbi);
+      this.contract = this.contract.connect(this.provider);
     },
-    // async submitForm() {
-    //   if (this.role === 1) {
-    //     // Admin logic: Grant the patent
-    //     try {
-    //       await this.contract.grantPatent(this.applicationNumber);
-    //       // Optionally, you can show a success message or perform any other action
-    //     } catch (error) {
-    //       console.error("Error granting patent:", error);
-    //       // Optionally, you can show an error message or perform any other action
-    //     }
-    //   } else if (this.role === 2) {
-    //     // Regular user logic: Apply for the patent
-    //     try {
-    //       await this.contract.applyForPatent(
-    //         this.IPC_classification,
-    //         this.applicant,
-    //         this.inventor,
-    //         this.title
-    //       );
-    //       // Optionally, you can show a success message or perform any other action
-    //     } catch (error) {
-    //       console.error("Error applying for patent:", error);
-    //       // Optionally, you can show an error message or perform any other action
-    //     }
-    //   } else {
-    //     // Handle the case where the role is not yet determined or loading
-    //     console.log("Role not determined yet.");
-    //   }
-    // },
-
-    // beforeMount() {
-    //   this.connectWallet();
-    // },
-  }
+    async submitForm() {
+      try {
+        const tx = await this.contract.applyForPatent(
+          this.IPC_classification,
+          this.applicant,
+          this.inventor,
+          this.title
+        );
+        await tx.wait();
+        console.log("Transaction mined:", tx.hash);
+      } catch (error) {
+        console.error("Error submitting form:", error);
+      }
+    },
+    async getRole() {
+      try {
+        // Get the signer
+        const signer = this.provider.getSigner();
+        // Connect the contract with the signer
+        const contractWithSigner = await this.contract.connect(signer);
+        // Get the role from the contract
+        const role = await contractWithSigner.getRole(
+          await signer.getAddress()
+        );
+        // Parse the role to an integer
+        this.role = parseInt(role);
+        // Log the role for debugging
+        console.log("Role:", this.role);
+      } catch (error) {
+        console.error("Error getting role:", error);
+      }
+    },
+  },
 };
 </script>
 
 <style>
+#app {
+}
+.container {
+}
+.header {
+  font-size: 1em;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  font-weight: bold;
+  color: #555;
+}
+.user-text {
+  font-size: 1.1em;
+  letter-spacing: 1.2px;
+  font-weight: bold;
+  color: #ab9a91;
+}
+.admin-text {
+  font-size: 1.1em;
+  letter-spacing: 1.2px;
+  font-weight: bold;
+  color: #d5bdaf;
+}
+.account-text {
+  font-size: 1em;
+  letter-spacing: 3px;
+  color: #afb3a2;
+}
 form {
-  max-width: 420px;
+  max-width: 450px;
   margin: 30px auto;
-  background: white;
   text-align: left;
   padding: 40px;
   border-radius: 10px;
@@ -128,9 +165,9 @@ label {
   color: #aaa;
   display: inline-block;
   margin: 25px 0 15px;
-  font-size: 0.6em;
+  font-size: 0.9em;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   font-weight: bold;
 }
 input {
@@ -142,16 +179,21 @@ input {
   border-bottom: 1px solid #ddd;
   color: #555;
 }
-button {
-  background: #aaa;
+.submit-button {
+  background: #555; /* Updated button background color */
   border: 0;
-  padding: 10px 20px;
+  padding: 15px 30px; /* Adjusted padding */
   margin-top: 20px;
   color: white;
-  border-radius: 20px;
+  border-radius: 40px;
   text-transform: uppercase;
+  font-weight: bold; /* Added font weight */
+  cursor: pointer; /* Added cursor style */
 }
 .submit {
   text-align: center;
 }
+
+
+
 </style>
