@@ -85,7 +85,9 @@
             v-model="title"
             :state="titleState"
             required
-          ></b-form-input>
+          >
+          
+        </b-form-input>
         </b-form-group>
       </form>
     </b-modal>
@@ -168,11 +170,14 @@ export default {
       titleState: null,
 
       applicationNumber: '',
+      patentNumber: '',
+      
+      publicationDate: '',  // di na ata need ideclare kasi nakadeclare na sa fields?
 
       
       pendingList: [],
 
-      fields: ['ipcClassification', 'applicant', 'inventor', 'title', 'action'],
+      fields: ['applicationNumber','patentNumber', 'applicationDate', 'ipcClassification', 'applicant', 'inventor', 'title', 'publicationDate', 'action', ],
       
       
       
@@ -285,17 +290,22 @@ beforeMount() {
       this.appliedPatentsLength = await this.contract.getAllAppliedPatents();
       this.pendingList =[];
       for (let i = 0; i < this.appliedPatentsLength; i++) {
-        var patent = await this.contract.appliedPatents(i)
+        var patent = await this.contract.appliedPatents(i);
         var _patent = {
           applicationNumber: i,
           ipcClassification: patent.IPC_Classification,
       applicant: patent.applicant,
       inventor: patent.inventors,
       title: patent.title,
+      patentNumber: patent.patentNumber,
+      applicationDate: patent.applicationDate,
+      publicationDate: patent.publicationDate,
+
+
           
 
         }
-        this.pendingList.push(_patent)
+        this.pendingList.push(_patent);
         console.log(this.pendingList);
       }
     },
