@@ -20,7 +20,7 @@
     </div>
     <p class="account-text" v-if="account">Account Address: {{ account }}</p>
     
-    <b-button v-b-modal.modal-prevent-closing >Apply</b-button>
+    <b-button v-b-modal.modal-prevent-closing v-if = "role === 2" >Apply</b-button>
     
     <!-- Patent Application Form -->
     <b-modal
@@ -90,46 +90,55 @@
       </form>
     </b-modal>
 
-    <b-table striped hover :items="pendingList" :fields="fields"></b-table>
 
 
-  <!-- Table for Viewing Patent Applications -->
-  <!-- <div class="p-2">
-      <table>
-        <thead>
-          <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-            <th v-for="header in headerGroup.headers" :key="header.id" :colSpan="header.colSpan">
-              <FlexRender
-                v-if="!header.isPlaceholder"
-                :render="header.column.columnDef.header"
-                :props="header.getContext()"
-              />
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in table.getRowModel().rows" :key="row.id">
-            <td v-for="cell in row.getVisibleCells()" :key="cell.id">
-              <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-            </td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr v-for="footerGroup in table.getFooterGroups()" :key="footerGroup.id">
-            <th v-for="header in footerGroup.headers" :key="header.id" :colSpan="header.colSpan">
-              <FlexRender
-                v-if="!header.isPlaceholder"
-                :render="header.column.columnDef.footer"
-                :props="header.getContext()"
-              />
-            </th>
-          </tr>
-        </tfoot>
-      </table>
-    </div> -->
-    </div>
-  
+<!-- <b-table striped hover :items="pendingList" :fields="fields" >
+  <template v-slot:cell(action)="data">
+    <b-button variant="danger" @click="deleteItem(data.item)">
+        Deny
+      </b-button>
+      <b-button variant="success" @click="deleteItem(data.item)">
+        Grant
+      </b-button>
+
+    </template>
+    </b-table> -->
+   
+
+    <b-table v-if="role === 1" striped hover :items="pendingList" :fields="fields" >
+  <template v-slot:cell(action)="data">
+    <b-button variant="danger" @click="denyItem(data.item)">
+      Deny
+    </b-button>
+    <b-button variant="success" @click="grantPatentApp(data.item.applicationNumber)">
+      Grant
+    </b-button>
+  </template>
+</b-table>
+
+<b-table v-else striped hover :items="pendingList" :fields="fields" >
+  <template v-slot:head(action)>
+    <!-- This template slot will effectively remove the action column for role !== 1 -->
+  </template>
+  <!-- No need for a cell template here since we don't want to render any content for the action column -->
+</b-table>
+
+
+
+
+
+
+
+  </div>
 </template>
+
+
+    
+
+
+
+
+    
 
 
 
@@ -158,19 +167,24 @@ export default {
       title: '',
       titleState: null,
 
+      applicationNumber: '',
+
       
       pendingList: [],
 
-      fields: ['ipcClassification', 'applicant', 'inventor', 'title'],
+      fields: ['ipcClassification', 'applicant', 'inventor', 'title', 'action'],
       
       
-
+      
   };
 },
 beforeMount() {
     this.connectWallet();
   },
   methods: {
+    
+    
+
 
     checkFormValidity() {
       const valid = this.$refs.form.checkValidity()
@@ -263,7 +277,7 @@ beforeMount() {
       }
     },
     async createContractInstance() {
-      var contractAddress = "0x57b1281678D6A75C00275D181A4d4ab79DA76d48";
+      var contractAddress = "0x614Db80a796ff99eFAD7E7B1c2Cc6e9EBbFb72DF";
       this.contract = new ethers.Contract(contractAddress, contractAbi);
       this.contract = this.contract.connect(this.provider);
     },
@@ -273,6 +287,7 @@ beforeMount() {
       for (let i = 0; i < this.appliedPatentsLength; i++) {
         var patent = await this.contract.appliedPatents(i)
         var _patent = {
+          applicationNumber: i,
           ipcClassification: patent.IPC_Classification,
       applicant: patent.applicant,
       inventor: patent.inventors,
@@ -284,10 +299,20 @@ beforeMount() {
         console.log(this.pendingList);
       }
     },
+    async grantPatentApp (applicationNumber) {
+      const signer = this.provider.getSigner();
+      const contractWithSigner = await this.contract.connect(signer);
 
-    
+      const grant = await contractWithSigner.grantPatent(applicationNumber);
+      await grant.wait()
+      console.log(grant, 'transaction successful');
+      
 
-        // Connect the contract with the signer
+
+
+      // const title = this.posts.indexOf((x)) => x.title === title);
+
+    },
         
         
       
@@ -392,27 +417,6 @@ input {
   text-align: center;
 }
 
-table {
-  border: 1px solid lightgray;
-}
-
-tbody {
-  border-bottom: 1px solid lightgray;
-}
-
-th {
-  border-bottom: 1px solid lightgray;
-  border-right: 1px solid lightgray;
-  padding: 2px 4px;
-}
-
-tfoot {
-  color: gray;
-}
-
-tfoot th {
-  font-weight: normal;
-}
 
 
 </style>
