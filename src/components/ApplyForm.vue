@@ -23,6 +23,8 @@
 
     
     <b-button v-b-modal.modal-prevent-closing v-if = "role === 2" >Apply</b-button>
+
+    
     
     <!-- Patent Application Form -->
     <b-modal
@@ -90,27 +92,26 @@
           >
           
         </b-form-input>
+        <b-form-file
+          v-model="file"
+          :state="fileState"
+          placeholder="Choose a file or drop it here..."
+          drop-placeholder="Drop file here..."
+          accept=".pdf,.docx"
+        ></b-form-file>
         </b-form-group>
+        
+        
       </form>
     </b-modal>
 
 
 
-<!-- <b-table striped hover :items="pendingList" :fields="fields" >
-  <template v-slot:cell(action)="data">
-    <b-button variant="danger" @click="deleteItem(data.item)">
-        Deny
-      </b-button>
-      <b-button variant="success" @click="deleteItem(data.item)">
-        Grant
-      </b-button>
-
-    </template>
-    </b-table> -->
 
 
 
 
+<!-- 
     <b-table striped hover :items="grantedList" :fields="fields" > </b-table>
    
 
@@ -129,11 +130,32 @@
 </b-table>
 
 <b-table v-else striped hover :items="pendingList" :fields="fields" >
-  <template v-slot:head(action)>
-    <!-- This template slot will effectively remove the action column for role !== 1 -->
-  </template>
-  <!-- No need for a cell template here since we don't want to render any content for the action column -->
-</b-table>
+  <template v-slot:head(action)> -->
+
+    <b-tabs content-class="mt-3">
+      <b-tab title="Pending" active>
+        <b-table striped hover :items="pendingList" :fields="fields" v-if="role === 1">
+          <!-- Action buttons for pending patents (only for admin) -->
+          <template v-slot:cell(action)="data">
+            <b-button variant="danger" @click="denyItem(data.item)">Deny</b-button>
+            <b-button variant="success" @click="grantPatentApp(data.item.applicationNumber)">Grant</b-button>
+          </template>
+        </b-table>
+
+        <b-table striped hover :items="pendingList" :fields="fields" v-else>
+          <!-- No action buttons for pending patents (for non-admin users) -->
+        </b-table>
+      </b-tab>
+
+      <b-tab title="Granted">
+        <!-- Table to display granted patents -->
+        <b-table striped hover :items="grantedList" :fields="fields"></b-table>
+      </b-tab>
+    </b-tabs>
+  
+  
+
+
 
 
 
@@ -161,6 +183,7 @@
 import { ethers } from "ethers";
 
 import contractAbi from "../contracts-abi/ip.json";
+import moment from 'moment';
 
 export default {
   name: "ApplyForm",
@@ -211,6 +234,7 @@ beforeMount() {
       this.titleState = valid
       return valid
     },
+
     resetModal() {
       this.ipcClassification = ''
       this.ipcClassificationState = null
@@ -227,20 +251,7 @@ beforeMount() {
       // Trigger submit handler
       this.handleSubmit()
     },
-    // handleSubmit() {
-    //   // Exit when the form isn't valid
-    //   if (!this.checkFormValidity()) {
-    //     return
-    //   }
-    //   // Submit the form data (you can add your logic here)
-    //   console.log('IPC Classification:', this.ipcClassification)
-    //   console.log('Applicant:', this.applicant)
-    //   console.log('Inventor:', this.inventor)
-    //   console.log('Title:', this.title)
-    //   // Hide the modal manually
-    //   this.$nextTick(() => {
-    //     this.$bvModal.hide('modal-prevent-closing')
-    //   })
+
     async handleSubmit() {
   // Exit when the form isn't valid
   if (!this.checkFormValidity()) {
@@ -261,17 +272,17 @@ beforeMount() {
       this.title
     );
 
-    // Transaction successful, log the details
+    
     console.log(apply, 'Transaction successful');
     
-    // Hide the modal manually
+    
     this.$nextTick(() => {
       this.$bvModal.hide('modal-prevent-closing');
     });
   } catch (error) {
-    // Log and handle errors
+    
     console.error('Error submitting patent application:', error);
-    // Optionally, you can display an error message to the user
+    
   }
 },
 
@@ -288,6 +299,7 @@ beforeMount() {
         await this.getAllPendingLists();
         await this.getAllGrantedLists();
         await this.getRole();
+
         
          // fetch role after contract instance is created
       } else {
@@ -295,7 +307,7 @@ beforeMount() {
       }
     },
     async createContractInstance() {
-      var contractAddress = "0xa79f6d3474368D300D4573151feAC7489B30B9C3";
+      var contractAddress = "0x140ce960E6fF179Ba00cB8FAdF076aEBC7f4e35c";
       this.contract = new ethers.Contract(contractAddress, contractAbi);
       this.contract = this.contract.connect(this.provider);
     },
@@ -311,8 +323,9 @@ beforeMount() {
       inventor: patent.inventors,
       title: patent.title,
       patentNumber: patent.patentNumber,
-      applicationDate: patent.applicationDate,
-      publicationDate: patent.publicationDate,
+
+      applicationDate: moment(patent.applicationDate * 1000).format('MMMM Do YYYY, h:mm:ss a'),
+      publicationDate:  patent.publicationDate == 0 ? 0: moment(patent.publicationDate * 1000).format('MMMM Do YYYY, h:mm:ss a'), // or lll
 
 
           
@@ -321,6 +334,7 @@ beforeMount() {
         this.pendingList.push(_patent);
         console.log(this.pendingList);
       }
+ 
     },
     async getAllGrantedLists() {
       this.grantedPatentsLength = await this.contract.getAllGrantedPatents();
@@ -334,31 +348,67 @@ beforeMount() {
       inventor: grant.inventors,
       title: grant.title,
       patentNumber: grant.patentNumber,
-      applicationDate: grant.applicationDate,
-      publicationDate: grant.publicationDate,
+      applicationDate: moment(grant.applicationDate * 1000).format('MMMM Do YYYY, h:mm:ss a'),
+      publicationDate: moment(grant.publicationDate * 1000).format('MMMM Do YYYY, h:mm:ss a'),
 
         }
         this.grantedList.push(_grant);
         console.log(this.grantedList);
       }
 
+
     },
-    async grantPatentApp (applicationNumber) {
-      const signer = this.provider.getSigner();
-      const contractWithSigner = await this.contract.connect(signer);
+   
 
-      const grant = await contractWithSigner.grantPatent(applicationNumber);
-      await grant.wait()
+      async grantPatentApp(applicationNumber) {
+  try {
+    const signer = this.provider.getSigner();
+    const contractWithSigner = await this.contract.connect(signer);
+
+    // Grant the patent
+    const grant = await contractWithSigner.grantPatent(applicationNumber);
+    await grant.wait();
+
+    // Remove the granted patent from the pending list
+    const index = this.pendingList.findIndex(patent => patent.applicationNumber === applicationNumber);
+    if (index !== -1) {
+      this.pendingList.splice(index, 1);
+    }
+    // Save the updated pending list to local storage
+    localStorage.setItem('pendingList', JSON.stringify(this.pendingList));
+
+    // Fetch the updated list of granted patents
+    await this.getAllGrantedLists();
+
+    console.log('Patent granted successfully:', grant);
+  } catch (error) {
+    console.error('Error granting patent:', error);
+  }
+},
+
+
+
+
+  
+
+  
+    // async denyPatentApp (applicationNumber) {
+    //   const signer = this.provider.getSigner();
+    //   const contractWithSigner = await this.contract.connect(signer);
+
+    //   const deny = await contractWithSigner.denyPatent(applicationNumber);
+    //   await deny.wait()
       
       
-      console.log(grant, 'transaction successful');
-
-      
+    //   console.log(grant, 'transaction successful');
 
 
+    // },
 
-      // const title = this.posts.indexOf((x)) => x.title === title);
-
+    async getAllPatents() {
+      await this.getAllPendingLists();
+      await this.getAllGrantedLists();
+      this.allPatents = [...this.pendingList, ...this.grantedList]; // Combine the arrays
     },
 
 

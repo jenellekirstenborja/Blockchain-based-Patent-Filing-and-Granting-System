@@ -89,7 +89,15 @@ contract IntellectualPropertySystem {
         grantedIndex[_applicationNumber] = grantedPatents.length - 1; // records ht index of the newly added patent
         isPatentGranted[_applicationNumber] = true; // updates isPatentGranted mapping
         ctrPatentNumber++;
+
+        // Update the grantedList array
+    Patent memory grantedPatent = appliedPatents[appliedIndex[_applicationNumber]];
+    grantedList.push(grantedPatent);
+
+        
     }
+
+
 
     // Check Grant Status
     function checkGrantStatus(uint64 _applicationNumber) external view returns (bool) {
@@ -111,6 +119,10 @@ contract IntellectualPropertySystem {
    
     function getAllAppliedPatents() public view returns (uint256) {
         return appliedPatents.length;
+    }
+
+    function getAllGrantedPatents() public view returns (uint256) {
+        return grantedPatents.length;
     }
 
 
