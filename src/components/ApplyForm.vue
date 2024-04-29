@@ -19,6 +19,8 @@
       </b-navbar>
     </div>
     <p class="account-text" v-if="account">Account Address: {{ account }}</p>
+
+
     
     <b-button v-b-modal.modal-prevent-closing v-if = "role === 2" >Apply</b-button>
     
@@ -105,9 +107,17 @@
 
     </template>
     </b-table> -->
+
+
+
+
+    <b-table striped hover :items="grantedList" :fields="fields" > </b-table>
    
 
+    
     <b-table v-if="role === 1" striped hover :items="pendingList" :fields="fields" >
+      
+      
   <template v-slot:cell(action)="data">
     <b-button variant="danger" @click="denyItem(data.item)">
       Deny
@@ -124,6 +134,7 @@
   </template>
   <!-- No need for a cell template here since we don't want to render any content for the action column -->
 </b-table>
+
 
 
 
@@ -176,8 +187,9 @@ export default {
 
       
       pendingList: [],
+      grantedList: [],
 
-      fields: ['applicationNumber','patentNumber', 'applicationDate', 'ipcClassification', 'applicant', 'inventor', 'title', 'publicationDate', 'action', ],
+      fields: ['applicationNumber','patentNumber', 'applicationDate', 'ipcClassification', 'applicant', 'inventor', 'title', 'publicationDate', 'action' ],
       
       
       
@@ -274,6 +286,7 @@ beforeMount() {
         await this.createContractInstance(); 
         
         await this.getAllPendingLists();
+        await this.getAllGrantedLists();
         await this.getRole();
         
          // fetch role after contract instance is created
@@ -282,7 +295,7 @@ beforeMount() {
       }
     },
     async createContractInstance() {
-      var contractAddress = "0x614Db80a796ff99eFAD7E7B1c2Cc6e9EBbFb72DF";
+      var contractAddress = "0xa79f6d3474368D300D4573151feAC7489B30B9C3";
       this.contract = new ethers.Contract(contractAddress, contractAbi);
       this.contract = this.contract.connect(this.provider);
     },
@@ -309,13 +322,37 @@ beforeMount() {
         console.log(this.pendingList);
       }
     },
+    async getAllGrantedLists() {
+      this.grantedPatentsLength = await this.contract.getAllGrantedPatents();
+      this.grantedList = [];
+      for (let i = 0; i < this.grantedPatentsLength; i++ ) {
+        var grant = await this.contract.grantedPatents(i);
+        var _grant = {
+          applicationNumber: i,
+          ipcClassification: grant.IPC_Classification,
+      applicant: grant.applicant,
+      inventor: grant.inventors,
+      title: grant.title,
+      patentNumber: grant.patentNumber,
+      applicationDate: grant.applicationDate,
+      publicationDate: grant.publicationDate,
+
+        }
+        this.grantedList.push(_grant);
+        console.log(this.grantedList);
+      }
+
+    },
     async grantPatentApp (applicationNumber) {
       const signer = this.provider.getSigner();
       const contractWithSigner = await this.contract.connect(signer);
 
       const grant = await contractWithSigner.grantPatent(applicationNumber);
       await grant.wait()
+      
+      
       console.log(grant, 'transaction successful');
+
       
 
 
@@ -323,6 +360,8 @@ beforeMount() {
       // const title = this.posts.indexOf((x)) => x.title === title);
 
     },
+
+
         
         
       
